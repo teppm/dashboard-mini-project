@@ -10,9 +10,12 @@ function makeGraphs(error, salaryData) {
     });
 
     show_discipline_selector(ndx);
+    show_percentage_that_are_professors(ndx, "Female", "#percentage-of-women-professors");
+    show_percentage_that_are_professors(ndx, "Male", "#percentage-of-men-professors");
     show_gender_balance(ndx);
     show_average_salaries(ndx);
     show_rank_distribution(ndx);
+
 
     dc.renderAll();
 };
@@ -27,6 +30,43 @@ function show_discipline_selector(ndx) {
         .dimension(dim)
         .group(group);
 
+};
+
+function show_percentage_that_are_professors(ndx, gender, element) {
+    var percentageThatAreProf = ndx.groupAll().reduce(
+        function(p, v) {
+            if (v.sex == gender) {
+                p.count++;
+                if (v.rank == "Prof") {
+                    p.are_prof++;
+                }
+            }
+            return p;
+        },
+        function(p, v) {
+            if (v.sex == gender) {
+                p.count--;
+                if (v.rank == "Prof") {
+                    p.are_prof--;
+                }
+            }
+            return p;
+        },
+        function() {
+            return { count: 0, are_prof: 0 };
+        }
+
+    );
+    dc.numberDisplay(element)
+        .formatNumber(d3.format(".2%"))
+        .valueAccessor(function(d) {
+            if (d.count == 0) {
+                return 0;
+            } else {
+                return (d.are_prof / d.count);
+            }
+        })
+        .group(percentageThatAreProf);
 };
 
 function show_gender_balance(ndx) {
@@ -128,4 +168,22 @@ function show_rank_distribution(ndx) {
     var asstProfByGender = rankByGender(dim, "AsstProf");
     var assocProfByGender = rankByGender(dim, "AssocProf");
 
+    dc.barChart("#rank-distribution")
+        .width(400)
+        .height(300)
+        .dimension(dim)
+        .group(profByGender, "Prof")
+        .stack(asstProfByGender, "Asst Prof")
+        .stack(assocProfByGender, "Assoc Prof")
+        .valueAccessor(function(d) {
+            if (d.value.total > 0) {
+                return (d.value.match / d.value.total) * 100;
+            } else {
+                return 0;
+            }
+        })
+        .x(d3.scale.ordinal())
+        .xUnits(dc.units.ordinal)
+        .legend(dc.legend().x(320).y(20).itemHeight(15).gap(5))
+        .margins({ top: 10, right: 100, bottom: 30, left: 30 })
 };
